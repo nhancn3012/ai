@@ -24,6 +24,7 @@ spring:
   main:
     allow-bean-definition-overriding: true
 chunk-size: 800
+min-chunk-size: 100
 overlap-size: 100
 resilience4j.retry:
   instances:

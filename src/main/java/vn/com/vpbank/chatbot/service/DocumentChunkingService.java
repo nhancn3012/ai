@@ -20,27 +20,9 @@ public class DocumentChunkingService {
     private int chunkSize;
     @Value("${overlap-size}")
     private int overlapSize;
-    private final int minChunkSize = 100;
+    @Value("${min-chunk-size}")
+    private int minChunkSize;
 
-    /**
-     * Chunking tối ưu cho vector database
-     */
-    public List<DocumentChunk> chunkDocument(BookDocument document, String rawText) {
-        // 1. Clean text trước khi chunk
-        String cleanText = deepCleanText(rawText);
-
-        // 2. Kiểm tra text sau khi clean
-        if (cleanText == null || cleanText.trim().length() < minChunkSize) {
-            return Collections.emptyList();
-        }
-
-        // 3. Chunk theo semantic
-        return semanticChunking(document, cleanText);
-    }
-
-    /**
-     * Deep cleaning - loại bỏ tất cả noise không cần thiết
-     */
     // Pre-compile all patterns for better performance
     private static final Pattern HTML_BLOCK_PATTERN =
             Pattern.compile("</?(p|div|article|section|h[1-6])\\s*>", Pattern.CASE_INSENSITIVE);
@@ -73,7 +55,25 @@ public class DocumentChunkingService {
     private static final Pattern MULTIPLE_NEWLINES_PATTERN =
             Pattern.compile("\\n{3,}");
 
-    public String deepCleanText(String text) {
+
+    /**
+     * Chunking tối ưu cho vector database
+     */
+    public List<DocumentChunk> chunkDocument(BookDocument document, String rawText) {
+        // 1. Clean text trước khi chunk
+        String cleanText = deepCleanText(rawText);
+        // 2. Kiểm tra text sau khi clean
+        if (cleanText == null || cleanText.trim().length() < minChunkSize) {
+            return Collections.emptyList();
+        }
+        // 3. Chunk theo semantic
+        return semanticChunking(document, cleanText);
+    }
+
+    /**
+     * Deep cleaning - loại bỏ tất cả noise không cần thiết
+     */
+    private String deepCleanText(String text) {
         if (text == null || text.isEmpty()) return null;
 
         // Apply transformations in optimal order (most frequent first)
@@ -104,10 +104,8 @@ public class DocumentChunkingService {
     private List<DocumentChunk> semanticChunking(BookDocument document, String cleanText) {
         List<DocumentChunk> chunks = new ArrayList<>();
 
-        // Chia theo paragraph trước
+        // Chia theo paragraph với ngữ nghĩa rõ ràng
         String[] paragraphs = cleanText.split("\\n\\s*\\n");
-
-        log.info("=== PARAGRAPH ANALYSIS ===");
         log.info("Total paragraphs found: {}", paragraphs.length);
 
         StringBuilder currentChunk = new StringBuilder();
@@ -148,17 +146,17 @@ public class DocumentChunkingService {
     }
 
     /**
-     * Tạo chunk tối ưu - KHÔNG thêm metadata vào content
+     * Tạo chunk tối ưu không thêm metadata vào content
      */
     private DocumentChunk createOptimalChunk(BookDocument document, String content, int index) {
         // Content chỉ chứa nội dung thuần túy, không có metadata
         String cleanContent = content
-                .replaceAll("\\n+", " ")        // Newlines thành spaces
-                .replaceAll("\\s+", " ")        // Multiple spaces
+                .replaceAll("\\n+", " ")  // Newlines thành spaces
+                .replaceAll("\\s+", " ")   // Multiple spaces
                 .trim();
 
         return new DocumentChunk(
-                cleanContent,                    // Content thuần, không có metadata
+                cleanContent,
                 document.getTitle(),
                 document.getAuthor(),
                 document.getId(),
@@ -190,102 +188,4 @@ public class DocumentChunkingService {
         return substring;
     }
 
-
-//
-//    /*
-//    * cleanText thành các chunk kèm metadata từ BookDocument để lưu vectorDB
-//    * mỗi chunk có thể overlap một phần với chunk trước đó để giữ ngữ cảnh
-//    * */
-//    public List<DocumentChunk> chunkDocument(BookDocument document, String cleanText) {
-//        List<DocumentChunk> chunks = new ArrayList<>();
-//        if (cleanText == null || cleanText.trim().isEmpty()) {
-//            return chunks;
-//        }
-//        cleanText = cleanText.trim();
-//
-//        if (cleanText.length() <= chunkSize) {
-//            String contextualContent = buildContextualContent(document, cleanText);
-//            chunks.add(new DocumentChunk(
-//                    contextualContent,
-//                    document.getTitle(),
-//                    document.getAuthor(),
-//                    document.getId(),
-//                    0,
-//                    document.getSourceUrl()
-//            ));
-//            return chunks;
-//        }
-//
-//        int chunkIndex = 0;
-//        int start = 0;
-//
-//        while (start < cleanText.length()) {
-//            int end = Math.min(start + chunkSize, cleanText.length());
-//
-//            if (end < cleanText.length()) {
-//                end = findNaturalBreakpoint(cleanText, start, end);
-//            }
-//
-//            String chunkContent = cleanText.substring(start, end).trim();
-//            if (!chunkContent.isEmpty()) {
-//                String contextualContent = buildContextualContent(document, chunkContent);
-//                chunks.add(new DocumentChunk(
-//                        contextualContent,
-//                        document.getTitle(),
-//                        document.getAuthor(),
-//                        document.getId(),
-//                        chunkIndex,
-//                        document.getSourceUrl()
-//                ));
-//                chunkIndex++;
-//            }
-//
-//            // FIX: Đảm bảo start luôn tiến lên đủ lớn
-//            int nextStart = end - overlapSize;
-//            start = Math.max(start + chunkSize - overlapSize, nextStart);
-//
-//            // Đảm bảo không bị stuck ở vị trí cũ
-//            if (start <= 0 || start >= cleanText.length()) {
-//                break;
-//            }
-//        }
-//        return chunks;
-//    }
-//
-//    private int findNaturalBreakpoint(String text, int start, int end) {
-//        // Try to find sentence ending
-//        int lastSentenceEnd = text.lastIndexOf('.', end);
-//        if (lastSentenceEnd > start + (end - start) / 2) {
-//            return lastSentenceEnd + 1;
-//        }
-//        // Try to find paragraph ending
-//        int lastParagraphEnd = text.lastIndexOf("\\n", end);
-//        if (lastParagraphEnd > start + (end - start) / 2) {
-//            return lastParagraphEnd + 1;
-//        }
-//        // Try to find space (word boundary)
-//        int lastSpace = text.lastIndexOf(' ', end);
-//        if (lastSpace > start + (end - start) / 2) {
-//            return lastSpace + 1;
-//        }
-//        return end;
-//    }
-//
-//    private String buildContextualContent(BookDocument document, String chunkContent) {
-//        return chunkContent;
-////        StringBuilder contextBuilder = new StringBuilder();
-////
-////        // Add document metadata for better retrieval
-////        if (document.getTitle() != null && !document.getTitle().equals("Unknown Title")) {
-////            contextBuilder.append("Tiêu đề: ").append(document.getTitle()).append("\\n");
-////        }
-////
-////        if (document.getAuthor() != null && !document.getAuthor().equals("Unknown Author")) {
-////            contextBuilder.append("Tác giả: ").append(document.getAuthor()).append("\\n");
-////        }
-////
-////        contextBuilder.append("\\nNội dung: ").append(chunkContent);
-////
-////        return contextBuilder.toString();
-//    }
 }
