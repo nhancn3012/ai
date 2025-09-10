@@ -1,0 +1,34 @@
+server:
+  port: 9989
+spring:
+  application:
+    name: chatbot-services
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      embedding:
+        model: text-embedding-3-small
+      chat:
+        model: gpt-3.5-turbo
+    vectorstore:
+      qdrant:
+        host: 5f3059bf-33aa-4025-ac98-67e9779a6097.us-east4-0.gcp.cloud.qdrant.io
+        port: 6334
+        api-key: ${OPENAI_API_KEY}
+        use-tls: true
+        collection-name: vector_store
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/chatbot
+
+  main:
+    allow-bean-definition-overriding: true
+chunk-size: 800
+overlap-size: 100
+resilience4j.retry:
+  instances:
+    vectorStoreRetry:
+      max-attempts: 3
+      wait-duration: 1s
+      retry-exceptions:
+        - java.lang.Exception

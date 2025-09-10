@@ -1,0 +1,18 @@
+fortify-sast-scancentral:
+   stage: test
+
+   variables:
+      SSC_URL: "https://ssc.vpbank.com.vn/ssc"
+      SSC_TOKEN: "1e68ae14-9a49-43ff-8bda-ea2946c685ad"
+      SSC_APP: "chatbot-services"
+      SSC_PV: "1.0.0"
+
+   script:
+      - scancentral arguments -targs "-exclude **/jquery* -exclude **/bootstrap*"
+      - scancentral -sscurl $SSC_URL -ssctoken $SSC_TOKEN start -bt none -upload -application "$SSC_APP" -version "$SSC_PV" -uptoken $SSC_TOKEN
+      - ls -A ./ | xargs rm -rf
+   tags:
+      - fortify
+   when: manual
+   
+   allow_failure: true

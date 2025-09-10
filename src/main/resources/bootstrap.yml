@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: chatbot-services
+  cloud:
+    config:
+      fail-fast: true
+      uri: http://corp-configuration:8888
+      enabled: false
+  profiles:
+    active: local
+
+  main.allow-bean-definition-overriding: true
+
+application:
+  version: ${version}
