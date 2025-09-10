@@ -1,0 +1,34 @@
+@startuml
+actor User
+boundary ChatbotController
+control IngestAsyncService
+control ChatService
+entity TextExtractor
+entity Chunker
+database MongoDB
+database QdrantCloud
+entity EmbeddingModel as "OpenAI"
+== Ingest Flow ==
+User -> ChatbotController: Upload document
+ChatbotController -> IngestAsyncService: /ingest(file)
+IngestAsyncService -> TextExtractor: transformationText(file)
+IngestAsyncService -> EmbeddingModel: ocrImage(image)
+TextExtractor --> IngestAsyncService: clean text
+IngestAsyncService -> Chunker: documentChunking(text)
+Chunker --> IngestAsyncService: chunks
+IngestAsyncService -> EmbeddingModel: embedding(chunks)
+EmbeddingModel --> IngestAsyncService: vectors
+IngestAsyncService -> QdrantCloud: saveEmbeddings(vectors + metadata)
+IngestAsyncService -> MongoDB: saveDocumentMetadata()
+== Q&A Flow ==
+User -> ChatbotController: request requestion
+ChatbotController -> ChatService: /question(query)
+ChatService -> MongoDB: saveUserMessage(query)
+ChatService -> QdrantCloud: semanticSearch(query embedding)
+QdrantCloud --> ChatService: related contexts
+ChatService -> EmbeddingModel: ask(query + contexts)
+EmbeddingModel --> ChatService: answer
+ChatService -> MongoDB: saveBotAnswer(answer)
+ChatService --> ChatbotController: response
+ChatbotController --> User: show answer
+@enduml
