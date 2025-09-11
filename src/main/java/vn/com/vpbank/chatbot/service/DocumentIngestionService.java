@@ -68,7 +68,5 @@ public class DocumentIngestionService {
 
         // Create embeddings and store in vector database
         vectorStoreService.addDocuments(chunks);
-        log.info("Added {} chunks to vector store", chunks.size());
-
     }
 }

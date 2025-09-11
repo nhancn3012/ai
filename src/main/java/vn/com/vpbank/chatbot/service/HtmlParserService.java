@@ -132,7 +132,9 @@ public class HtmlParserService {
                 imageTexts.append("[Ảnh: ").append(imageUrl).append("]\n")
                         .append(ocrResult).append("\n");
             }
-            return imageTexts.toString();
+            String ocrImage = imageTexts.toString();
+            log.info("OCR image result: {}",  ocrImage);
+            return ocrImage;
         } catch (Exception e) {
             log.error("Process ocrImage: ", e);
             return Strings.EMPTY;

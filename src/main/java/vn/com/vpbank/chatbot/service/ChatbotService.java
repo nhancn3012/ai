@@ -62,7 +62,7 @@ public class ChatbotService {
             // 4. Get response from ChatModel
             ChatResponse response = chatModel.call(prompt);
             String answer = response.getResult().getOutput().getText();
-
+            log.info("answer: {}", answer);
             log.info("Generated answer length: {} characters", answer.length());
             return answer;
 
